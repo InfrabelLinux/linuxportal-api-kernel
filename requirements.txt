@@ -1,0 +1,4 @@
+requests
+flask
+urllib3
+redis
