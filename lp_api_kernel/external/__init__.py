@@ -36,12 +36,13 @@ class InsecureAdapter(HTTPAdapter):
 
 class BaseExternalApi(BaseInternalApi):
 
-    def __init__(self, base_url='', auth=(), cache_ttl=3600, insecure_ciphers=(), **kwargs):
+    def __init__(self, base_url='', auth=(), cache_ttl=3600, insecure_ciphers=(),
+                 cache_host=None, cache_db=None, cache_port=None, **kwargs):
         super(BaseExternalApi, self).__init__(**kwargs)
         self.base = base_url
         self.auth = auth
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        self.c = RemoteCache(ttl=cache_ttl)
+        self.c = RemoteCache(host=cache_host, db=cache_db, port=cache_port, ttl=cache_ttl)
         self.__insecure_ciphers = insecure_ciphers
 
     def url(self, endpoint, endpoint_is_url=False):
