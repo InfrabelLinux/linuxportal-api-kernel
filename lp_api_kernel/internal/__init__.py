@@ -1,8 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from functools import wraps
 from flask import logging
-from lp_api_kernel.exceptions import MissingParameterException, InvalidParameterException
-import re
+from lp_api_kernel.exceptions import MissingParameterException
 
 
 class BaseInternalApi:
@@ -15,26 +13,64 @@ class BaseInternalApi:
         self.logger = logging.getLogger('flask.app')
 
     @abstractmethod
-    def create(self, **kwargs):
+    def create(self, *args, **kwargs):
+        """
+        Function to create something.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return
 
     @abstractmethod
-    def read(self, **kwargs):
+    def read(self, *args, **kwargs):
+        """
+        Function to read a single item.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return
 
     @abstractmethod
-    def update(self, **kwargs):
+    def update(self, *args, **kwargs):
+        """
+        Function to update a single item.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return
 
     @abstractmethod
-    def delete(self, **kwargs):
+    def delete(self, *args, **kwargs):
+        """
+        Function do delete a single item.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return
 
     @abstractmethod
-    def list(self, **kwargs):
+    def list(self, *args, **kwargs):
+        """
+        Function to list all items.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         return
 
     def check_input_data(self, input_data, required=None, strict=False):
+        """
+        For functions that take a dict of key, value pairs, this function will check
+        that all required keys are present.
+        :param input_data:
+        :param required:
+        :param strict:
+        :return:
+        """
         if hasattr(self, 'required') and not required:
             required = self.required
         for r in required:
@@ -49,6 +85,13 @@ class BaseInternalApi:
         return True
 
     def default_parameter(self, input_data, defaults=None):
+        """
+        For functions that take a dict of key, value pairs, this function will ensure that all
+        keys that are also in defaults have the default value set.
+        :param input_data:
+        :param defaults:
+        :return:
+        """
         if hasattr(self, 'defaults') and not defaults:
             defaults = self.defaults
         input_data_with_defaults = input_data.copy()
@@ -57,9 +100,15 @@ class BaseInternalApi:
                 input_data_with_defaults[d] = defaults[d]
         return input_data_with_defaults
 
-    def caller(self, func, **kwargs):
+    def caller(self, func, *args, **kwargs):
+        """
+        Call a function from the self.api array.
+        :param func:
+        :param kwargs:
+        :return:
+        """
         r = []
         for a in self.api:
             f = getattr(a, func)
-            r.append(f(**kwargs))
+            r.append(f(*args, **kwargs))
         return r

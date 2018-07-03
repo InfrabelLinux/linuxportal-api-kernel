@@ -10,6 +10,11 @@ from urllib3.contrib import pyopenssl
 
 
 class InsecureAdapter(HTTPAdapter):
+    """
+    Sometimes, your remote is too insecure for Python.
+    Provide the insecure_ciphers array to .__init__() (with a single string value
+    containing supported ciphers) and it will fallback to those.
+    """
 
     def __init__(self, *args, insecure_ciphers=(), **kwargs):
         super(InsecureAdapter, self).__init__(*args, **kwargs)
@@ -35,10 +40,25 @@ class InsecureAdapter(HTTPAdapter):
 
 
 class BaseExternalApi(BaseInternalApi):
+    """
+    An API that is geared to connecting with remotes. Supports insecure remotes,
+    remotes that require authentication and caching (using Redis).
+    """
 
-    def __init__(self, base_url='', auth=(), cache_ttl=3600, insecure_ciphers=(),
+    def __init__(self, *args, base_url='', auth=(), cache_ttl=3600, insecure_ciphers=(),
                  cache_host=None, cache_db=None, cache_port=None, **kwargs):
-        super(BaseExternalApi, self).__init__(**kwargs)
+        """
+        :param base_url: URL base (e.g. https://my.app/application) where the remote parameter is glued to.
+        :param auth: (username, password)
+        :param cache_ttl: default 300 (seconds)
+        :param insecure_ciphers: list containing a single string listing the insecure ciphers you have to support
+                                 (optional!)
+        :param cache_host: Redis host.
+        :param cache_db: Redis DB.
+        :param cache_port: Redis port.
+        :param kwargs:
+        """
+        super(BaseExternalApi, self).__init__(*args, **kwargs)
         self.base = base_url
         self.auth = auth
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -46,6 +66,12 @@ class BaseExternalApi(BaseInternalApi):
         self.__insecure_ciphers = insecure_ciphers
 
     def url(self, endpoint, endpoint_is_url=False):
+        """
+        From an endpoint and self.base, create an URL.
+        :param endpoint:
+        :param endpoint_is_url:
+        :return:
+        """
         if endpoint == '':
             url = self.base
         else:
@@ -63,8 +89,22 @@ class BaseExternalApi(BaseInternalApi):
         s.mount('https://', InsecureAdapter(self.__insecure_ciphers))
         return getattr(s, method)
 
-    def request(self, method='get', endpoint='', data=None, content_type='application/json', headers=None,
+    def request(self, method, endpoint, *args, data=None, content_type='application/json', headers=None,
                 endpoint_is_url=False, target_is_insecure=False, **kwargs):
+        """
+        Perform a request. Kind of a pass-through to requests.request, but with some goodies. `**kwargs` and `*args`
+        are passed to requests.request.
+        :param method:
+        :param endpoint:
+        :param args:
+        :param data:
+        :param content_type:
+        :param headers:
+        :param endpoint_is_url:
+        :param target_is_insecure: will use the insecure adapter with the insecure ciphers
+        :param kwargs:
+        :return:
+        """
         method = method.lower()
         url = self.url(endpoint, endpoint_is_url)
 
@@ -83,13 +123,13 @@ class BaseExternalApi(BaseInternalApi):
             if target_is_insecure:
                 action_f = self.insecure_target(url, method)
                 pyopenssl.extract_from_urllib3()
-            result = action_f(url, headers=self.headers(headers), verify=False, data=data,
+            result = action_f(url, *args, headers=self.headers(headers), verify=False, data=data,
                               auth=self.auth, **kwargs)
         else:
             if target_is_insecure:
                 action_f = self.insecure_target(url, method)
                 pyopenssl.extract_from_urllib3()
-            result = action_f(url, headers=self.headers(headers), verify=False,
+            result = action_f(url, *args, headers=self.headers(headers), verify=False,
                               auth=self.auth, **kwargs)
         if result.status_code >= 400:
             raise requests.HTTPError('The request generated an error: {0}: {1}'.format(result.status_code, result.text),
@@ -97,8 +137,23 @@ class BaseExternalApi(BaseInternalApi):
 
         return result
 
-    def cached_request(self, method='get', endpoint='', data=None, content_type='application/json', headers=None,
+    def cached_request(self, method, endpoint, *args, data=None, content_type='application/json', headers=None,
                        endpoint_is_url=False, cache_post=False, params=None, **kwargs):
+        """
+        Perform a request against the cache. If not present, will be added. Can also cache post requests for
+        non-REST API's.
+        :param method:
+        :param endpoint:
+        :param args:
+        :param data:
+        :param content_type:
+        :param headers:
+        :param endpoint_is_url:
+        :param cache_post:
+        :param params:
+        :param kwargs:
+        :return:
+        """
         url = self.url(endpoint, endpoint_is_url)
         if method == 'get' or (method == 'post' and cache_post):
             try:
@@ -109,7 +164,7 @@ class BaseExternalApi(BaseInternalApi):
                 else:
                     result_text = self.c.get([url, method, json.dumps(params)])
             except ItemNotFoundException:
-                result = self.request(method=method, endpoint=endpoint, data=data, content_type=content_type,
+                result = self.request(*args, method=method, endpoint=endpoint, data=data, content_type=content_type,
                                       headers=headers, endpoint_is_url=endpoint_is_url, params=params, **kwargs)
                 if method == 'post' and data:
                     if content_type == 'application/json' and not isinstance(data, str):
@@ -121,7 +176,7 @@ class BaseExternalApi(BaseInternalApi):
                     result_text = self.c.get([url, method, json.dumps(params)])
             return json.loads(result_text)
         else:
-            result = self.request(method=method, endpoint=endpoint, data=data, content_type=content_type,
+            result = self.request(*args, method=method, endpoint=endpoint, data=data, content_type=content_type,
                                   headers=headers, endpoint_is_url=endpoint_is_url, params=params, **kwargs)
             return result.json()
 
