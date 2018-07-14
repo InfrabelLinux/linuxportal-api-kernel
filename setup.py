@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='lp-api-kernel',
-    version='1.0.1',
+    version='1.1.0',
     author='Infrabel Linux Team',
     author_email='linux@infrabel.be',
     packages=[
@@ -15,9 +15,10 @@ setup(
         'requests',
         'flask',
         'urllib3',
-        'redis'
+        'redis',
+        'pyOpenSSL'
     ],
-    url='https://git.msnet.railb.be/linux-infrastructure/lp-api-kernel',
+    url='https://github.com/InfrabelLinux/linuxportal-api-kernel',
     license='Apache',
     description='Basic API\'s for the Linux Portal.'
 )

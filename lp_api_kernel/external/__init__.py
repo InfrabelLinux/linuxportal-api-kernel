@@ -7,6 +7,7 @@ from lp_api_kernel.exceptions import ItemNotFoundException
 from requests.adapters import HTTPAdapter
 import ssl
 from urllib3.contrib import pyopenssl
+from os import environ
 
 
 class InsecureAdapter(HTTPAdapter):
@@ -46,7 +47,8 @@ class BaseExternalApi(BaseInternalApi):
     """
 
     def __init__(self, *args, base_url='', auth=(), cache_ttl=3600, insecure_ciphers=(),
-                 cache_host=None, cache_db=None, cache_port=None, **kwargs):
+                 cache_host=environ.get('CACHE_HOST'), cache_db=environ.get('CACHE_DATABASE'),
+                 cache_port=environ.get('CACHE_PORT'), **kwargs):
         """
         :param base_url: URL base (e.g. https://my.app/application) where the remote parameter is glued to.
         :param auth: (username, password)
@@ -135,7 +137,7 @@ class BaseExternalApi(BaseInternalApi):
             raise requests.HTTPError('The request generated an error: {0}: {1}'.format(result.status_code, result.text),
                                      response=result)
 
-        return result
+        return result.json()
 
     def cached_request(self, method, endpoint, *args, data=None, content_type='application/json', headers=None,
                        endpoint_is_url=False, cache_post=False, params=None, **kwargs):
@@ -169,16 +171,16 @@ class BaseExternalApi(BaseInternalApi):
                 if method == 'post' and data:
                     if content_type == 'application/json' and not isinstance(data, str):
                         data = json.dumps(data)
-                    self.c.set([url, method, data, json.dumps(params)], result.json())
+                    self.c.set([url, method, data, json.dumps(params)], result)
                     result_text = self.c.get([url, method, data, json.dumps(params)])
                 else:
-                    self.c.set([url, method, json.dumps(params)], result.json())
+                    self.c.set([url, method, json.dumps(params)], result)
                     result_text = self.c.get([url, method, json.dumps(params)])
             return json.loads(result_text)
         else:
             result = self.request(*args, method=method, endpoint=endpoint, data=data, content_type=content_type,
                                   headers=headers, endpoint_is_url=endpoint_is_url, params=params, **kwargs)
-            return result.json()
+            return result
 
     def headers(self, extra_headers=None):
         __headers = {

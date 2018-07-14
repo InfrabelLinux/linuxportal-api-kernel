@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
+from lp_api_kernel.exceptions import MissingParameterException, InvalidParameterException
 from logging import getLogger
-from lp_api_kernel.exceptions import MissingParameterException
 
 
 class BaseInternalApi:
