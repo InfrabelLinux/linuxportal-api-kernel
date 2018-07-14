@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from flask import logging
+from logging import getLogger
 from lp_api_kernel.exceptions import MissingParameterException
 
 
@@ -10,7 +10,7 @@ class BaseInternalApi:
         if api_class:
             self.a = api_class(**kwargs)
         self.api = []
-        self.logger = logging.getLogger('flask.app')
+        self.logger = getLogger('flask.app')
 
     @abstractmethod
     def create(self, *args, **kwargs):
